@@ -1,0 +1,88 @@
+IPL  SPARK OPERATIONS
+=========================
+
+/user/edureka_918210/ipldata
+=============================
+
+[edureka_918210@ip-20-0-41-62 IPLData]$ hadoop fs -ls /user/edureka_918210/ipldata
+Found 5 items
+-rw-r--r--   3 edureka_918210 hadoop   25099132 2020-08-12 11:07 /user/edureka_918210/ipldata/Ball_By_Ball.csv
+-rw-r--r--   3 edureka_918210 hadoop     113358 2020-08-12 11:07 /user/edureka_918210/ipldata/Match.csv
+-rw-r--r--   3 edureka_918210 hadoop      34614 2020-08-12 11:07 /user/edureka_918210/ipldata/Player.csv
+-rw-r--r--   3 edureka_918210 hadoop    2664692 2020-08-12 11:07 /user/edureka_918210/ipldata/Player_match.csv
+-rw-r--r--   3 edureka_918210 hadoop        343 2020-08-12 11:07 /user/edureka_918210/ipldata/Team.csv
+[edureka_918210@ip-20-0-41-62 IPLData]$ 
+
+
+var myDF_BallByBall=spark.read.format("csv").option("delimiter",",").option("header","false").option("inferSchema","true").load("/user/edureka_918210/ipldata/Ball_By_Ball.csv").toDF("MatcH_id","Over_id","Ball_id","Innings_No","Team_Batting","Team_Bowling","Striker_Batting_Position","Extra_Type","Runs_Scored","Extra_runs","Wides","Legbyes","Byes","Noballs","Penalty","Bowler_Extras","Out_type","Caught","Bowled","Run_out","LBW","Retired_hurt","Stumped","caught_and_bowled","hit_wicket","ObstructingFeild","Bowler_Wicket","Match_Date","Season","Striker","Non_Striker","Bowler","Player_Out","Fielders","Striker_match_SK","StrikerSK","NonStriker_match_SK","NONStriker_SK","Fielder_match_SK","Fielder_SK","Bowler_match_SK","BOWLER_SK","PlayerOut_match_SK","BattingTeam_SK","BowlingTeam_SK","Keeper_Catch","Player_out_sk","MatchDateSK")
+
+var myDF_Match=spark.read.format("csv").option("delimiter",",").option("header","false").option("inferSchema","true").load("/user/edureka_918210/ipldata/Match.csv").toDF("Match_SK","match_id","Team1","Team2","match_date","Season_Year","Venue_Name","City_Name","Country_Name","Toss_Winner","match_winner","Toss_Name","Win_Type","Outcome_Type","ManOfMach","Win_Margin","Country_id")
+
+
+var myDF_Player=spark.read.format("csv").option("delimiter",",").option("header","false").option("inferSchema","true").load("/user/edureka_918210/ipldata/Player.csv").toDF("PLAYER_SK","Player_Id","Player_Name","DOB","Batting_hand","Bowling_skill","Country_Name")
+
+
+var myDF_Player_match=spark.read.format("csv").option("delimiter",",").option("header","false").option("inferSchema","true").load("/user/edureka_918210/ipldata/Player_match.csv").toDF("Player_match_SK","PlayerMatch_key","Match_Id","Player_Id","Player_Name","DOB","Batting_hand","Bowling_skill","Country_Name","Role_Desc","Player_team","Opposit_Team","Season_year","is_manofThematch","Age_As_on_match","IsPlayers_Team_won","Batting_Status","Bowling_Status","Player_Captain","Opposit_captain","Player_keeper","Opposit_keeper")
+
+
+var myDF_Team=spark.read.format("csv").option("delimiter",",").option("header","false").option("inferSchema","true").load("/user/edureka_918210/ipldata/Team.csv").toDF("Team_SK","Team_Id","Team_Name")
+
+
+
+myDF_BallByBall.show(false)
+myDF_Match.show(false)
+myDF_Player.show(false)
+myDF_Player_match.show(false)
+myDF_Team.show(false)
+
+
+
+myDF_BallByBall.printSchema
+myDF_Match.printSchema
+myDF_Player.printSchema
+myDF_Player_match.printSchema
+myDF_Team.printSchema
+
+
+myDF_BallByBall.createOrReplaceTempView("BallByBall")
+myDF_Match.createOrReplaceTempView("Match")
+myDF_Player.createOrReplaceTempView("Player")
+myDF_Player_match.createOrReplaceTempView("Player_match")
+myDF_Team.createOrReplaceTempView("Team")
+
+
+=========================================================================================================================================================
+
+
+"MatcH_id","Over_id","Ball_id","Innings_No","Team_Batting","Team_Bowling","Striker_Batting_Position","Extra_Type","Runs_Scored","Extra_runs","Wides","Legbyes","Byes","Noballs","Penalty","Bowler_Extras","Out_type","Caught","Bowled","Run_out","LBW","Retired_hurt","Stumped","caught_and_bowled","hit_wicket","ObstructingFeild","Bowler_Wicket","Match_Date","Season","Striker","Non_Striker","Bowler","Player_Out","Fielders","Striker_match_SK","StrikerSK",""NonStriker_match_SK","NONStriker_SK","Fielder_match_SK","Fielder_SK","Bowler_match_SK","BOWLER_SK","PlayerOut_match_SK","BattingTeam_SK","BowlingTeam_SK","Keeper_Catch","Player_out_sk","MatchDateSK"
+
+
+"Match_SK","match_id","Team1","Team2","match_date","Season_Year","Venue_Name","City_Name","Country_Name","Toss_Winner","match_winner","Toss_Name","Win_Type","Outcome_Type","ManOfMach","Win_Margin","Country_id"
+
+
+"PLAYER_SK","Player_Id","Player_Name","DOB","Batting_hand","Bowling_skill","Country_Name"
+
+
+"Player_match_SK","PlayerMatch_key","Match_Id","Player_Id","Player_Name","DOB","Batting_hand","Bowling_skill","Country_Name","Role_Desc","Player_team","Opposit_Team","Season_year","is_manofThematch","Age_As_on_match","IsPlayers_Team_won","Batting_Status","Bowling_Status","Player_Captain","Opposit_captain","Player_keeper","Opposit_keeper"
+
+
+"Team_SK","Team_Id","Team_Name"
+
+=========================================================================================================================================================
+
+
+spark.sql("describe Team").show
+spark.sql("select * from Team").show
+spark.sql("select PLAYER_SK,Player_Id,Player_Name from Player where Country_Name='India'").show
+spark.sql("describe Player_match").show
+spark.sql("select Player_Name,Player_Id,is_manofThematch,Player_team,Opposit_Team from Player_match").show(false)
+spark.sql("describe Match").show
+spark.sql("describe Match").show
+
+spark.sql("SELECT Player_match.Batting_hand,Player_match.Player_team,Player_match.Player_Captain,Player.Player_Name,Player.DOB FROM Player INNER JOIN Player_match ON Player.Player_Id = Player_match.Player_Id").show
+
+
+spark.sql("SELECT Player_match.Batting_hand,Player_match.Player_team,Player_match.Player_Captain,Player.Player_Name,Player.DOB FROM Player RIGHT JOIN Player_match ON Player.Player_Id = Player_match.Player_Id").show
+
+
+

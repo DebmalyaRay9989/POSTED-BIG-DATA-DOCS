@@ -1,0 +1,612 @@
+MovieLens Files
+================
+
+Please the Files Downloaded From MovieLens
+
+[edureka_918210@ip-20-0-31-13 MovieLens]$ hadoop fs -put movies.dat ratings.dat users.dat /user/edureka_918210/MovieLens
+[edureka_918210@ip-20-0-31-13 MovieLens]$ hadoop fs -ls /user/edureka_918210/MovieLens
+Found 3 items
+-rw-r--r--   3 edureka_918210 hadoop     175191 2020-08-05 06:55 /user/edureka_918210/MovieLens/movies.dat
+-rw-r--r--   3 edureka_918210 hadoop   25594340 2020-08-05 06:55 /user/edureka_918210/MovieLens/ratings.dat
+-rw-r--r--   3 edureka_918210 hadoop     140408 2020-08-05 06:55 /user/edureka_918210/MovieLens/users.dat
+[edureka_918210@ip-20-0-31-13 MovieLens]$ 
+
+
+prepare_ratings
+==================
+
+val ratingsRDD=spark.sparkContext.textFile("/user/edureka_918210/MovieLens/ratings.dat")
+
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.{StructType, StructField, StringType};
+
+val schemaString = "UserID MovieID Rating Timestamp"
+
+val schema = StructType(schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, true)))
+
+val rowRDD = ratingsRDD.map(_.split("::")).map(x => Row(x(0), x(1), x(2), x(3)))
+
+val ratings = spark.createDataFrame(rowRDD, schema)
+
+ratings.printSchema
+
+root
+ |-- UserID: string (nullable = true)
+ |-- MovieID: string (nullable = true)
+ |-- Rating: string (nullable = true)
+ |-- Timestamp: string (nullable = true)
+scala> 
+
+
+ratings.show(false)
+
+
+scala> ratings.show(false)
++------+-------+------+---------+
+|UserID|MovieID|Rating|Timestamp|
++------+-------+------+---------+
+|1     |1193   |5     |978300760|
+|1     |661    |3     |978302109|
+|1     |914    |3     |978301968|
+|1     |3408   |4     |978300275|
+|1     |2355   |5     |978824291|
+|1     |1197   |3     |978302268|
+|1     |1287   |5     |978302039|
+|1     |2804   |5     |978300719|
+|1     |594    |4     |978302268|
+|1     |919    |4     |978301368|
+|1     |595    |5     |978824268|
+|1     |938    |4     |978301752|
+|1     |2398   |4     |978302281|
+|1     |2918   |4     |978302124|
+|1     |1035   |5     |978301753|
+|1     |2791   |4     |978302188|
+|1     |2687   |3     |978824268|
+|1     |2018   |4     |978301777|
+|1     |3105   |5     |978301713|
+|1     |2797   |4     |978302039|
++------+-------+------+---------+
+only showing top 20 rows
+
+
+
+prepare_users
+==================
+
+val usersRDD=spark.sparkContext.textFile("/user/edureka_918210/MovieLens/users.dat")
+
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.{StructType, StructField, StringType};
+
+val schemaString = "UserID Gender Age Occupation Zip-code"
+
+val schema = StructType(schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, true)))
+
+val rowRDD = usersRDD.map(_.split("::")).map(x => Row(x(0), x(1), x(2), x(3), x(4)))
+
+val users_1 = spark.createDataFrame(rowRDD, schema)
+
+
+
+scala> users_1.printSchema
+root
+ |-- UserID: string (nullable = true)
+ |-- Gender: string (nullable = true)
+ |-- Age: string (nullable = true)
+ |-- Occupation: string (nullable = true)
+ |-- Zip-code: string (nullable = true)
+scala> 
+
+users_1.show(false)
+
+
+scala> users_1.show(false)
++------+------+---+----------+--------+
+|UserID|Gender|Age|Occupation|Zip-code|
++------+------+---+----------+--------+
+|1     |F     |1  |10        |48067   |
+|2     |M     |56 |16        |70072   |
+|3     |M     |25 |15        |55117   |
+|4     |M     |45 |7         |02460   |
+|5     |M     |25 |20        |55455   |
+|6     |F     |50 |9         |55117   |
+|7     |M     |35 |1         |06810   |
+|8     |M     |25 |12        |11413   |
+|9     |M     |25 |17        |61614   |
+|10    |F     |35 |1         |95370   |
+|11    |F     |25 |1         |04093   |
+|12    |M     |25 |12        |32793   |
+|13    |M     |45 |1         |93304   |
+|14    |M     |35 |0         |60126   |
+|15    |M     |25 |7         |22903   |
+|16    |F     |35 |0         |20670   |
+|17    |M     |50 |1         |95350   |
+|18    |F     |18 |3         |95825   |
+|19    |M     |1  |10        |48073   |
+|20    |M     |25 |14        |55113   |
++------+------+---+----------+--------+
+only showing top 20 rows
+
+
+
+
+prepare_movies
+==================
+
+// Clean data into DataFrame
+
+val movies=spark.read.textFile("/user/edureka_918210/MovieLens/movies.dat")
+val m_id=movies.map(lines=>lines.split("::")(0)).toDF("MovieID")
+
+//Extract the title
+val title=movies.map(lines=>lines.split("::")(1))
+val m_title=title.map(x=>x.split("\\(")(0)).toDF("Title")
+
+//Extract the year
+val year=movies.map(lines=>lines.substring(lines.lastIndexOf("(")+1,lines.lastIndexOf(")"))).toDF("Year")
+val m_genre=movies.map(lines=>lines.split("::")(2)).toDF("Genres")
+
+// For appending the dataframes, we need to import monotonically_increasing_id
+import org.apache.spark.sql.functions.monotonically_increasing_id
+val m_res1=m_id.withColumn("id", monotonically_increasing_id()).join(m_title.withColumn("id", monotonically_increasing_id()), Seq("id")).drop("id")
+
+val m_res2=m_res1.withColumn("id", monotonically_increasing_id()).join(year.withColumn("id",monotonically_increasing_id()),Seq("id")).drop("id")
+
+val m_result=m_res2.withColumn("id", monotonically_increasing_id()).join(m_genre.withColumn("id", monotonically_increasing_id()), Seq("id")).drop("id")
+
+// This will give us the valid data with schema
+m_result.show
+// Examples
+m_result.where("MovieID=1").show
+m_result.filter("Genres == 'Action'").show
+m_result.select("Title").show
+System.exit(0)
+
+
+scala> m_result.printSchema
+root
+ |-- MovieID: string (nullable = true)
+ |-- Title: string (nullable = true)
+ |-- Year: string (nullable = true)
+ |-- Genres: string (nullable = true)
+scala> 
+
+scala> m_result.show(false)
++-------+-------------------------------+----+----------------------------+
+|MovieID|Title                          |Year|Genres                      |
++-------+-------------------------------+----+----------------------------+
+|1      |Toy Story                      |1995|Animation|Children's|Comedy |
+|2      |Jumanji                        |1995|Adventure|Children's|Fantasy|
+|3      |Grumpier Old Men               |1995|Comedy|Romance              |
+|4      |Waiting to Exhale              |1995|Comedy|Drama                |
+|5      |Father of the Bride Part II    |1995|Comedy                      |
+|6      |Heat                           |1995|Action|Crime|Thriller       |
+|7      |Sabrina                        |1995|Comedy|Romance              |
+|8      |Tom and Huck                   |1995|Adventure|Children's        |
+|9      |Sudden Death                   |1995|Action                      |
+|10     |GoldenEye                      |1995|Action|Adventure|Thriller   |
+|11     |American President, The        |1995|Comedy|Drama|Romance        |
+|12     |Dracula: Dead and Loving It    |1995|Comedy|Horror               |
+|13     |Balto                          |1995|Animation|Children's        |
+|14     |Nixon                          |1995|Drama                       |
+|15     |Cutthroat Island               |1995|Action|Adventure|Romance    |
+|16     |Casino                         |1995|Drama|Thriller              |
+|17     |Sense and Sensibility          |1995|Drama|Romance               |
+|18     |Four Rooms                     |1995|Thriller                    |
+|19     |Ace Ventura: When Nature Calls |1995|Comedy                      |
+|20     |Money Train                    |1995|Action                      |
++-------+-------------------------------+----+----------------------------+
+only showing top 20 rows
+
+
+scala> m_result.where("MovieID=1").show(false)
++-------+----------+----+---------------------------+
+|MovieID|Title     |Year|Genres                     |
++-------+----------+----+---------------------------+
+|1      |Toy Story |1995|Animation|Children's|Comedy|
++-------+----------+----+---------------------------+
+scala> 
+
+
+
+scala> m_result.filter("Genres == 'Action'").show(false)
++-------+------------------------------+----+------+
+|MovieID|Title                         |Year|Genres|
++-------+------------------------------+----+------+
+|9      |Sudden Death                  |1995|Action|
+|20     |Money Train                   |1995|Action|
+|71     |Fair Game                     |1995|Action|
+|145    |Bad Boys                      |1995|Action|
+|204    |Under Siege 2: Dark Territory |1995|Action|
+|227    |Drop Zone                     |1994|Action|
+|251    |Hunted, The                   |1995|Action|
+|315    |Specialist, The               |1994|Action|
+|384    |Bad Company                   |1995|Action|
+|393    |Street Fighter                |1994|Action|
+|394    |Coldblooded                   |1995|Action|
+|459    |Getaway, The                  |1994|Action|
+|479    |Judgment Night                |1993|Action|
+|533    |Shadow, The                   |1994|Action|
+|544    |Striking Distance             |1993|Action|
+|548    |Terminal Velocity             |1994|Action|
+|667    |Bloodsport 2                  |1995|Action|
+|694    |Substitute, The               |1996|Action|
+|876    |Police Story 4: Project S     |1993|Action|
+|886    |Bulletproof                   |1996|Action|
++-------+------------------------------+----+------+
+only showing top 20 rows
+
+
+
+
+scala> m_result.filter("Genres == 'Comedy'").show(false)
++-------+-------------------------------------------------------------------------+----+------+
+|MovieID|Title                                                                    |Year|Genres|
++-------+-------------------------------------------------------------------------+----+------+
+|5      |Father of the Bride Part II                                              |1995|Comedy|
+|19     |Ace Ventura: When Nature Calls                                           |1995|Comedy|
+|38     |It Takes Two                                                             |1995|Comedy|
+|52     |Mighty Aphrodite                                                         |1995|Comedy|
+|63     |Don't Be a Menace to South Central While Drinking Your Juice in the Hood |1996|Comedy|
+|65     |Bio-Dome                                                                 |1996|Comedy|
+|69     |Friday                                                                   |1995|Comedy|
+|88     |Black Sheep                                                              |1996|Comedy|
+|96     |In the Bleak Midwinter                                                   |1995|Comedy|
+|101    |Bottle Rocket                                                            |1996|Comedy|
+|102    |Mr. Wrong                                                                |1996|Comedy|
+|104    |Happy Gilmore                                                            |1996|Comedy|
+|109    |Headless Body in Topless Bar                                             |1995|Comedy|
+|115    |Happiness Is in the Field                                                |1995|Comedy|
+|119    |Steal Big, Steal Little                                                  |1995|Comedy|
+|125    |Flirting With Disaster                                                   |1996|Comedy|
+|135    |Down Periscope                                                           |1996|Comedy|
+|141    |Birdcage, The                                                            |1996|Comedy|
+|144    |Brothers McMullen, The                                                   |1995|Comedy|
+|156    |Blue in the Face                                                         |1995|Comedy|
++-------+-------------------------------------------------------------------------+----+------+
+only showing top 20 rows
+scala> 
+
+
+scala> m_result.select("Title").show(false)
++-------------------------------+
+|Title                          |
++-------------------------------+
+|Toy Story                      |
+|Jumanji                        |
+|Grumpier Old Men               |
+|Waiting to Exhale              |
+|Father of the Bride Part II    |
+|Heat                           |
+|Sabrina                        |
+|Tom and Huck                   |
+|Sudden Death                   |
+|GoldenEye                      |
+|American President, The        |
+|Dracula: Dead and Loving It    |
+|Balto                          |
+|Nixon                          |
+|Cutthroat Island               |
+|Casino                         |
+|Sense and Sensibility          |
+|Four Rooms                     |
+|Ace Ventura: When Nature Calls |
+|Money Train                    |
++-------------------------------+
+only showing top 20 rows
+scala> 
+
+
+m_result.filter("Year == '1995'").show(false)
+
++-------+-------------------------------+----+----------------------------+
+|MovieID|Title                          |Year|Genres                      |
++-------+-------------------------------+----+----------------------------+
+|1      |Toy Story                      |1995|Animation|Children's|Comedy |
+|2      |Jumanji                        |1995|Adventure|Children's|Fantasy|
+|3      |Grumpier Old Men               |1995|Comedy|Romance              |
+|4      |Waiting to Exhale              |1995|Comedy|Drama                |
+|5      |Father of the Bride Part II    |1995|Comedy                      |
+|6      |Heat                           |1995|Action|Crime|Thriller       |
+|7      |Sabrina                        |1995|Comedy|Romance              |
+|8      |Tom and Huck                   |1995|Adventure|Children's        |
+|9      |Sudden Death                   |1995|Action                      |
+|10     |GoldenEye                      |1995|Action|Adventure|Thriller   |
+|11     |American President, The        |1995|Comedy|Drama|Romance        |
+|12     |Dracula: Dead and Loving It    |1995|Comedy|Horror               |
+|13     |Balto                          |1995|Animation|Children's        |
+|14     |Nixon                          |1995|Drama                       |
+|15     |Cutthroat Island               |1995|Action|Adventure|Romance    |
+|16     |Casino                         |1995|Drama|Thriller              |
+|17     |Sense and Sensibility          |1995|Drama|Romance               |
+|18     |Four Rooms                     |1995|Thriller                    |
+|19     |Ace Ventura: When Nature Calls |1995|Comedy                      |
+|20     |Money Train                    |1995|Action                      |
++-------+-------------------------------+----+----------------------------+
+only showing top 20 rows
+
+TOP 10 Viewed Movies
+=======================
+
+[edureka_918210@ip-20-0-41-62 ~]$ hadoop fs -ls /user/edureka_918210/MovieLens
+Found 3 items
+-rw-r--r--   3 edureka_918210 hadoop     175191 2020-08-05 06:55 /user/edureka_918210/MovieLens/movies.dat
+-rw-r--r--   3 edureka_918210 hadoop   25594340 2020-08-05 06:55 /user/edureka_918210/MovieLens/ratings.dat
+-rw-r--r--   3 edureka_918210 hadoop     140408 2020-08-05 06:55 /user/edureka_918210/MovieLens/users.dat
+[edureka_918210@ip-20-0-41-62 ~]$ 
+
+
+val ratingsRDD=sc.textFile("/user/edureka_918210/MovieLens/ratings.dat")
+val movies=ratingsRDD.map(line=>line.split("::")(1).toInt)
+val movies_pair=movies.map(mv=>(mv,1))
+
+val movies_count=movies_pair.reduceByKey((x,y)=>x+y)
+val movies_sorted=movies_count.sortBy(x=>x._2,false,1)
+
+val mv_top10List=movies_sorted.take(10).toList
+val mv_top10RDD=sc.parallelize(mv_top10List)
+
+val mv_names=sc.textFile("/user/edureka_918210/MovieLens/movies.dat").map(line=>(line.split("::")(0).toInt,line.split("::")(1)))
+val join_out=mv_names.join(mv_top10RDD)
+join_out.sortBy(x=>x._2._2,false).map(x=> x._1+","+x._2._1+","+x._2._2).repartition(1).saveAsTextFile("/user/edureka_918210/MovieLens/Top-10-CSV")
+
+
+2028,Saving Private Ryan (1998),2653
+589,Terminator 2: Judgment Day (1991),2649
+2571,Matrix, The (1999),2590
+1270,Back to the Future (1985),2583
+593,Silence of the Lambs, The (1991),2578
+2858,American Beauty (1999),3428
+260,Star Wars: Episode IV - A New Hope (1977),2991
+1196,Star Wars: Episode V - The Empire Strikes Back (1980),2990
+1210,Star Wars: Episode VI - Return of the Jedi (1983),2883
+480,Jurassic Park (1993),2672
+
+Movies In Each Genre
+========================
+
+val movies_rdd=sc.textFile("/user/edureka_918210/MovieLens/movies.dat")
+val genre=movies_rdd.map(lines=>lines.split("::")(2))
+val flat_genre=genre.flatMap(lines=>lines.split("\\|"))
+val genre_kv=flat_genre.map(k=>(k,1))
+val genre_count=genre_kv.reduceByKey((k,v)=>(k+v))
+val genre_sort= genre_count.sortByKey()
+genre_sort.saveAsTextFile("/user/edureka_918210/MovieLens/result-csv")
+System.exit(0)
+
+
+Latest Movies
+========================
+
+val movies_rdd=sc.textFile("/user/edureka_918210/MovieLens/movies.dat")
+val movie_nm=movies_rdd.map(lines=>lines.split("::")(1))
+val year=movie_nm.map(lines=>lines.substring(lines.lastIndexOf("(")+1,lines.lastIndexOf(")")))
+val latest=year.max
+val latest_movies=movie_nm.filter(lines=>lines.contains("("+latest+")")).saveAsTextFile("/user/edureka_918210/MovieLens/LatestResult.csv")
+
+
+======================================================================================================================================================
+======================================================================================================================================================
+######################################################################################################################################################
+
+SPARK SQL DATALAKE :   ALTERNATIVE MOTHOD  : 
+======================================================================================================================================================
+======================================================================================================================================================
+######################################################################################################################################################
+
+[edureka_918210@ip-20-0-41-62 ~]$ hadoop fs -ls /user/edureka_918210/MovieLens
+Found 4 items
+drwxr-xr-x   - edureka_918210 hadoop          0 2020-08-05 08:25 /user/edureka_918210/MovieLens/Top-10-CSV
+-rw-r--r--   3 edureka_918210 hadoop     175191 2020-08-05 06:55 /user/edureka_918210/MovieLens/movies.dat
+-rw-r--r--   3 edureka_918210 hadoop   25594340 2020-08-05 06:55 /user/edureka_918210/MovieLens/ratings.dat
+-rw-r--r--   3 edureka_918210 hadoop     140408 2020-08-05 06:55 /user/edureka_918210/MovieLens/users.dat
+
+
+// 2nd method is to read the file directly into a dataFrame and create a temp view
+spark.read.textFile("/user/edureka_918210/MovieLens/movies.dat").createOrReplaceTempView("movies_staging");
+spark.read.textFile("/user/edureka_918210/MovieLens/ratings.dat").createOrReplaceTempView("ratings_staging");
+spark.read.textFile("/user/edureka_918210/MovieLens/users.dat").createOrReplaceTempView("users_staging");
+// Create a database to store the tables
+spark.sql("drop database if exists sparkdatalake cascade")
+spark.sql("create database sparkdatalake");
+// Make appropriate schemas for them
+
+// movies
+spark.sql(""" Select 
+split(value,'::')[0] as movieid,
+split(value,'::')[1] as title,
+substring(split(value,'::')[1],length(split(value,'::')[1])-4,4) as year,
+split(value,'::')[2] as genre 
+from movies_staging """).write.mode("overwrite").saveAsTable("sparkdatalake.movies");
+
+// users
+spark.sql(""" Select
+split(value,'::')[0] as userid,
+split(value,'::')[1] as gender,
+split(value,'::')[2] as age,
+split(value,'::')[3] as occupation,
+split(value,'::')[4] as zipcode
+from users_staging """).write.mode("overwrite").saveAsTable("sparkdatalake.users");
+
+// ratings
+spark.sql(""" Select
+split(value,'::')[0] as userid,
+split(value,'::')[1] as movieid,
+split(value,'::')[2] as rating,
+split(value,'::')[3] as timestamp
+from ratings_staging """).write.mode("overwrite").saveAsTable("sparkdatalake.ratings");
+System.exit(0) 
+
+TABLES IN SPARK ARE :
+============================
+
+//movies
+==============================================================================================================================================================
+spark.sql(""" Select 
+split(value,'::')[0] as movieid,
+split(value,'::')[1] as title,
+substring(split(value,'::')[1],length(split(value,'::')[1])-4,4) as year,
+split(value,'::')[2] as genre 
+from movies_staging """).show(false)
+
+
+// users
+==============================================================================================================================================================
+spark.sql(""" Select
+split(value,'::')[0] as userid,
+split(value,'::')[1] as gender,
+split(value,'::')[2] as age,
+split(value,'::')[3] as occupation,
+split(value,'::')[4] as zipcode
+from users_staging """).show(false)
+
+
+
+// ratings
+==============================================================================================================================================================
+spark.sql(""" Select
+split(value,'::')[0] as userid,
+split(value,'::')[1] as movieid,
+split(value,'::')[2] as rating,
+split(value,'::')[3] as timestamp
+from ratings_staging """).show(false)
+
+//Total Ratings Per Movie
+==============================================================================================================================================================
+
+spark.sql("""Select INT(movieid),sum(INT(rating)) as Total_ratings from sparkdatalake.ratings group by movieid order by movieid""").show(false)
+spark.sql("""Select INT(movieid),sum(INT(rating)) as Total_ratings from sparkdatalake.ratings group by movieid order by movieid""").repartition(1).write.format("csv").option("header","true").save("ResultTotalRatings")
+
+
++-------+-------------+                                                         
+|movieid|Total_ratings|
++-------+-------------+
+|1      |8613         |
+|10     |3144         |
+|100    |392          |
+|1000   |61           |
+|1002   |34           |
+|1003   |356          |
+|1004   |269          |
+|1005   |337          |
+|1006   |241          |
+|1007   |691          |
+|1008   |323          |
+|1009   |927          |
+|101    |979          |
+|1010   |791          |
+|1011   |368          |
+|1012   |1115         |
+|1013   |920          |
+|1014   |463          |
+|1015   |783          |
+|1016   |502          |
++-------+-------------+
+only showing top 20 rows
+
+//Number of Users per movie
+==============================================================================================================================================================
+
+spark.sql("""Select INT(movieid),count(INT(userid)) as Total_number_of_Users from sparkdatalake.ratings group by movieid order by movieid""").show(false)
+spark.sql("""Select movieid,count(userid) as Total_number_of_Users from sparkdatalake.ratings group by movieid order by movieid asc""").repartition(1).write.format("csv").option("header","true").save("ratingscount")
+
++-------+---------------------+                                                 
+|movieid|Total_number_of_Users|
++-------+---------------------+
+|1      |2077                 |
+|10     |888                  |
+|100    |128                  |
+|1000   |20                   |
+|1002   |8                    |
+|1003   |121                  |
+|1004   |101                  |
+|1005   |142                  |
+|1006   |78                   |
+|1007   |232                  |
+|1008   |97                   |
+|1009   |291                  |
+|101    |253                  |
+|1010   |242                  |
+|1011   |135                  |
+|1012   |301                  |
+|1013   |258                  |
+|1014   |136                  |
+|1015   |234                  |
+|1016   |156                  |
++-------+---------------------+
+only showing top 20 rows
+
+
+
+//Average rating per movie
+==============================================================================================================================================================
+
+spark.sql("""Select INT(movieid),avg(decimal(rating))  as Average_ratings from sparkdatalake.ratings group by movieid order by movieid asc""").show(false)
+
+
+spark.sql("""Select INT(movieid),avg(decimal(rating))  as Average_ratings from sparkdatalake.ratings group by movieid order by movieid asc""").repartition(1).write.format("csv").option("header","true").save("resultavgratings")
+
+
+
++-------+---------------+
+|movieid|Average_ratings|
++-------+---------------+
+|1      |4.1468         |
+|10     |3.5405         |
+|100    |3.0625         |
+|1000   |3.0500         |
+|1002   |4.2500         |
+|1003   |2.9421         |
+|1004   |2.6634         |
+|1005   |2.3732         |
+|1006   |3.0897         |
+|1007   |2.9784         |
+|1008   |3.3299         |
+|1009   |3.1856         |
+|101    |3.8696         |
+|1010   |3.2686         |
+|1011   |2.7259         |
+|1012   |3.7043         |
+|1013   |3.5659         |
+|1014   |3.4044         |
+|1015   |3.3462         |
+|1016   |3.2179         |
++-------+---------------+
+only showing top 20 rows
+
+//LIST OF OLDEST MOVIES
+=============================================================================================================================================================
+
+val movies_rdd=sc.textFile("/user/edureka_918210/MovieLens/movies.dat")
+
+// 1st method, convert existing rdd into DF using toDF function and then make it into a view
+
+val movies_DF=movies_rdd.toDF.createOrReplaceTempView("movies_view")
+
+// To use spark.sql, it should be at least a temporary view or even an table
+
+spark.sql(""" select
+split(value,'::')[0] as movieid,
+split(value,'::')[1] as moviename,
+substring(split(value,'::')[1],length(split(value,'::')[1])-4,4) as year
+from movies_view """).createOrReplaceTempView("movies");
+
+// To view the records, use spark.sql("select * from movies").show()
+
+var result=spark.sql("Select * from movies m1 where m1.year=(Select min(m2.year) from movies m2)").repartition(1).rdd.saveAsTextFile("result")
+
+spark.sql("Select * from movies m1 where m1.year=(Select min(m2.year) from movies m2)").show(false)
+
+spark.sql("Select * from movies m1 where m1.year=(Select min(m2.year) from movies m2)").show(false)
++-------+-----------------------------------------------------------+----+
+|movieid|moviename                                                  |year|
++-------+-----------------------------------------------------------+----+
+|2821   |Male and Female (1919)                                     |1919|
+|2823   |Spiders, The (Die Spinnen, 1. Teil: Der Goldene See) (1919)|1919|
+|3132   |Daddy Long Legs (1919)                                     |1919|
++-------+-----------------------------------------------------------+----+
+
+
+
+
+
